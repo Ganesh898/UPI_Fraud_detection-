@@ -15,6 +15,8 @@ const fraudDetectionService = {
   evaluateRisk: async ({
     utr,
     amount,
+    userId = null,
+    receiptDate = null,
     senderVpa = null,
     receiverVpa = null,
     merchantRegisteredVpa = 'apex.retail@okhdfcbank',
@@ -43,6 +45,19 @@ const fraudDetectionService = {
       const existing = transactionModel.findByUtr(cleanUtr);
       isDuplicateUtr = existing.some((t) => t.status !== 'rejected');
     }
+    const isCrossMerchantDuplicateUtr = userId
+      ? transactionModel.findCrossMerchantByUtr(cleanUtr, userId).length > 0
+      : false;
+
+    const indiaToday = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    const isReceiptDateMismatch = Boolean(
+      receiptDate && /^\d{4}-\d{2}-\d{2}$/.test(receiptDate) && receiptDate !== indiaToday
+    );
 
     // 3. Database lookups: Blacklist check (Sender & Receiver)
     const senderBlacklistRow = cleanSender ? blacklistModel.findByVpa(cleanSender) : null;
@@ -85,6 +100,9 @@ const fraudDetectionService = {
 
       // Structural
       isDuplicateUtr,
+      isCrossMerchantDuplicateUtr,
+      isReceiptDateMismatch,
+      receiptDate,
       isKnownSpoofDemo: Boolean(customFeatures.isKnownSpoofDemo),
       scoring_mode: scoringMode,
     };
@@ -128,7 +146,7 @@ const fraudDetectionService = {
 
     // Determine status & legacy uppercase riskLevel
     let legacyRiskLevel = 'LOW';
-    let legacyVerdict = 'VERIFIED GENUINE';
+    let legacyVerdict = 'LOW RISK - CONFIRM BANK CREDIT';
     let legacyStatus = 'verified';
 
     if (engineOutput.riskScore >= 71) {
@@ -137,15 +155,19 @@ const fraudDetectionService = {
       legacyStatus = 'flagged';
     } else if (engineOutput.riskScore >= 31) {
       legacyRiskLevel = 'MEDIUM';
-      legacyVerdict = receiverVpaMismatch
-        ? 'PAYEE MISMATCH - VERIFY MERCHANT CREDIT'
-        : 'SUSPICIOUS - VERIFY BANK SMS';
-      legacyStatus = 'flagged';
+      legacyVerdict = engineOutput.detectionReasons.some((factor) => factor.code === 'RULE_RECEIPT_DATE_MISMATCH')
+        ? 'OLD RECEIPT DATE - VERIFY BANK CREDIT'
+        : engineOutput.detectionReasons.some((factor) => factor.code === 'RULE_CROSS_MERCHANT_UTR_REUSE')
+          ? 'UTR USED AT ANOTHER MERCHANT - VERIFY BANK CREDIT'
+          : receiverVpaMismatch
+            ? 'PAYEE MISMATCH - VERIFY BANK CREDIT'
+            : 'SUSPICIOUS - VERIFY BANK SMS';
+      legacyStatus = 'review';
     } else {
       legacyRiskLevel = 'LOW';
       legacyVerdict = receiverVpaMismatch
         ? 'PAYEE MISMATCH - CONFIRM RECIPIENT'
-        : 'VERIFIED GENUINE';
+        : 'LOW RISK - CONFIRM BANK CREDIT';
       legacyStatus = 'verified';
     }
 

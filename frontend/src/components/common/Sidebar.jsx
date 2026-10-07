@@ -23,14 +23,14 @@ export const Sidebar = ({ currentPath, onNavigate, mobileOpen, onCloseMobile }) 
   const { transactions } = useTransactions();
 
   const flaggedCount = transactions.filter(
-    (t) => t.risk_level === 'HIGH' || t.status === 'flagged'
+    (t) => t.risk_level === 'HIGH' || t.status === 'flagged' || t.status === 'review'
   ).length;
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/verify', label: 'Verify Payment', icon: ScanLine, highlight: true },
     { path: '/history', label: 'Transactions', icon: History },
-    { path: '/alerts', label: 'Fraud Alerts', icon: AlertTriangle, badge: flaggedCount },
+    { path: '/alerts', label: 'Risk Review', icon: AlertTriangle, badge: flaggedCount },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/admin', label: 'Admin Rules', icon: Sliders, adminOnly: true },
     { path: '/profile', label: 'Profile', icon: User },

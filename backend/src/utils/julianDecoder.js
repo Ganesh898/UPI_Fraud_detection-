@@ -1,10 +1,10 @@
 /**
- * Julian Date Syntax & UTR Verification Utility
- * Standard Indian Banking UPI UTR: [Y][DDD][R][XXXXXXX]
+ * Prototype-only encoder/decoder for UTR-shaped demo references: [Y][DDD][R][XXXXXXX]
  * Y: Last digit of year (e.g. 6 for 2026)
  * DDD: Julian day of year (001 to 366)
  * R: Bank settlement batch / routing code
  * XXXXXXX: 7-digit unique sequence
+ * Real UTR formats vary by bank and are not validated by this encoding.
  */
 
 function getJulianDayOfYear(date = new Date()) {

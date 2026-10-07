@@ -2,12 +2,13 @@
 // Transparent Rule-Based Risk Engine with Pluggable Modular ML Architecture
 
 /**
- * Calculates current year's Julian day and validates standard Indian UPI UTR:
- * Standard Format: [Y][DDD][R][XXXXXXX]
+ * Calculates a Julian day for prototype-generated UTR-shaped references:
+ * Demo format: [Y][DDD][R][XXXXXXX]
  * Y: Last digit of Year (e.g., 6 for 2026)
  * DDD: Julian day of year (001 to 366)
  * R: Bank settlement batch / routing code digit
  * XXXXXXX: 7-digit unique sequence
+ * Real UTR formats vary by bank and are not validated by this encoding.
  */
 export const getJulianDayOfYear = (date = new Date()) => {
   const start = new Date(date.getFullYear(), 0, 0);
@@ -185,17 +186,6 @@ export class RuleBasedScorer {
         description: `Amount (₹${features.amount.toLocaleString('en-IN')}) exceeds normal instant retail clearance threshold.`,
         observed: `₹${features.amount}`,
         baseline: '< ₹50,000 threshold',
-      });
-    } else if (features.isMicroTestingAmount) {
-      addRuleHit({
-        code: 'RULE_MICRO_TESTING_AMOUNT',
-        name: 'Micro-Probing Transaction Amount',
-        category: 'Amount Anomaly',
-        defaultPoints: 15,
-        severity: 'LOW',
-        description: `Nominal micro-payment of ₹${features.amount} detected. Often used by fraudsters to test active handles.`,
-        observed: `₹${features.amount}`,
-        baseline: '> ₹10 standard baseline',
       });
     }
 
@@ -464,14 +454,15 @@ export class RuleBasedScorer {
       });
     }
 
-    if (!features.isNumericOnly || (features.utrLength > 0 && features.utrLength !== 12)) {
+    if (!features.isNumericOnly || features.utrLength < 8 || features.utrLength > 16) {
       addRuleHit({
         code: 'RULE_UTR_SYNTAX_VIOLATION',
         name: 'UTR Format Needs Verification',
         category: 'Banking Integrity',
-        defaultPoints: 25,
-        severity: 'MEDIUM',
-        description: `UTR "${features.utr}" does not match this prototype's 12-digit format check. UTR formats vary by bank; this alone does not confirm fraud.`,
+        defaultPoints: 35,
+        maxPoints: 35,
+        severity: 'LOW',
+        description: `Reference "${features.utr}" has an unusual shape. Bank reference formats vary; this needs verification and does not alone prove fraud.`,
         observed: `${features.utrLength} chars / non-standard`,
         baseline: 'Bank-specific reference format; confirm against bank records',
       });
@@ -546,7 +537,6 @@ export class MLModelScorer {
 
     logit += (features.isExtremeAmount ? 1.8 : 0);
     logit += (features.isHighValue ? 0.9 : 0);
-    logit += (features.isMicroTestingAmount ? 0.8 : 0);
     logit += Math.min(3.0, (features.amountRatio - 1) * 0.18);
 
     logit += Math.min(3.5, (features.txnCountLast5Min - 1) * 1.4);
@@ -567,7 +557,6 @@ export class MLModelScorer {
     logit += (features.senderIsBlacklisted ? 4.5 : 0);
     logit += Math.min(3.0, features.senderPastFraudCount * 1.5);
 
-    logit += (!features.isNumericOnly || features.utrLength !== 12 ? 2.5 : 0);
     logit += (features.isKnownSpoofDemo ? 5.0 : 0);
 
     const probability = 1 / (1 + Math.exp(-logit));
@@ -761,7 +750,7 @@ export const evaluateTransactionRisk = ({
   }
 
   let legacyLevel = 'LOW';
-  let legacyVerdict = 'VERIFIED GENUINE';
+  let legacyVerdict = 'LOW RISK - CONFIRM BANK CREDIT';
   let legacyStatus = 'verified';
 
   if (engineOutput.riskScore >= 71) {
@@ -771,10 +760,10 @@ export const evaluateTransactionRisk = ({
   } else if (engineOutput.riskScore >= 31) {
     legacyLevel = 'MEDIUM';
     legacyVerdict = 'SUSPICIOUS - VERIFY BANK SMS';
-    legacyStatus = 'flagged';
+    legacyStatus = 'review';
   } else {
     legacyLevel = 'LOW';
-    legacyVerdict = 'VERIFIED GENUINE';
+    legacyVerdict = 'LOW RISK - CONFIRM BANK CREDIT';
     legacyStatus = 'verified';
   }
 

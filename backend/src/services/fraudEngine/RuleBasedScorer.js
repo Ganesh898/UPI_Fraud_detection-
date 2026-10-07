@@ -67,18 +67,6 @@ class RuleBasedScorer {
         observed: `₹${features.amount}`,
         baseline: '< ₹50,000 threshold',
       });
-    } else if (features.isMicroTestingAmount) {
-      addRuleHit({
-        code: 'RULE_MICRO_TESTING_AMOUNT',
-        name: 'Micro-Probing Transaction Amount',
-        category: 'Amount Anomaly',
-        defaultPoints: 5,
-        maxPoints: 5,
-        severity: 'LOW',
-        description: `Low-value transfer of ₹${features.amount}. This alone is not evidence of fraud; review only alongside corroborating signals.`,
-        observed: `₹${features.amount}`,
-        baseline: '> ₹10 standard baseline',
-      });
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -364,14 +352,43 @@ class RuleBasedScorer {
       });
     }
 
-    if (!features.isNumericOnly || (features.utrLength > 0 && features.utrLength !== 12)) {
+    if (features.isCrossMerchantDuplicateUtr) {
+      addRuleHit({
+        code: 'RULE_CROSS_MERCHANT_UTR_REUSE',
+        name: 'UTR Previously Recorded at Another Merchant',
+        category: 'Replay Review',
+        defaultPoints: 45,
+        maxPoints: 45,
+        severity: 'MEDIUM',
+        description: 'This UTR was recorded for another merchant account. A reused receipt is possible; verify the payment in your own bank account before releasing goods.',
+        observed: 'Same UTR linked to a different merchant',
+        baseline: 'Unique payment reference for this checkout',
+      });
+    }
+
+    if (features.isReceiptDateMismatch) {
+      addRuleHit({
+        code: 'RULE_RECEIPT_DATE_MISMATCH',
+        name: 'Receipt Is Not Dated Today',
+        category: 'Receipt Freshness',
+        defaultPoints: 40,
+        maxPoints: 40,
+        severity: 'MEDIUM',
+        description: 'The receipt date differs from today. It may be an old receipt; verify the credit in your bank account before releasing goods.',
+        observed: features.receiptDate || 'Receipt date differs from today',
+        baseline: 'Today in India Standard Time',
+      });
+    }
+
+    if (!features.isNumericOnly || features.utrLength < 8 || features.utrLength > 16) {
       addRuleHit({
         code: 'RULE_UTR_SYNTAX_VIOLATION',
         name: 'UTR Format Needs Verification',
         category: 'Banking Integrity',
-        defaultPoints: 25,
-        severity: 'MEDIUM',
-        description: `UTR "${features.utr}" does not match this prototype's 12-digit format check. UTR formats vary by bank; this alone does not confirm fraud.`,
+        defaultPoints: 35,
+        maxPoints: 35,
+        severity: 'LOW',
+        description: `Reference "${features.utr}" is outside the prototype's common 8-16 digit check. Bank reference formats vary; this needs verification and does not alone prove fraud.`,
         observed: `${features.utrLength} chars / non-standard`,
         baseline: 'Bank-specific reference format; confirm against bank records',
       });

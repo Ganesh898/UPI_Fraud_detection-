@@ -28,7 +28,6 @@ class MLModelScorer {
     // Feature coefficients calibrated on UPI fraud behavioral vectors
     logit += (features.isExtremeAmount ? 1.8 : 0);
     logit += (features.isHighValue ? 0.9 : 0);
-    logit += (features.isMicroTestingAmount ? 0.8 : 0);
     logit += Math.min(3.0, (features.amountRatio - 1) * 0.18);
 
     logit += Math.min(3.5, (features.txnCountLast5Min - 1) * 1.4);
@@ -49,7 +48,6 @@ class MLModelScorer {
     logit += (features.senderIsBlacklisted ? 4.5 : 0);
     logit += Math.min(3.0, features.senderPastFraudCount * 1.5);
 
-    logit += (!features.isNumericOnly || features.utrLength !== 12 ? 2.5 : 0);
     logit += (features.isKnownSpoofDemo ? 5.0 : 0);
 
     // Sigmoid function: P(Fraud) = 1 / (1 + e^-logit)

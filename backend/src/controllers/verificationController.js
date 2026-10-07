@@ -25,6 +25,7 @@ const verificationController = {
       const evaluation = await fraudDetectionService.evaluateRisk({
         utr: utr_number,
         amount,
+        userId: req.user?.id,
         senderVpa: sender_vpa,
         receiverVpa: receiver_vpa || merchantVpa,
         merchantRegisteredVpa: merchantVpa,
@@ -49,12 +50,11 @@ const verificationController = {
         notes: notes || `Verified via ${mode}`,
       });
 
-      // Write security audit log if flagged or high risk
-      if (evaluation.level === 'HIGH') {
+      if (evaluation.level === 'HIGH' || evaluation.level === 'MEDIUM') {
         auditLogModel.log({
           userId: req.user ? req.user.id : null,
-          action: 'FRAUD_FLAGGED',
-          details: `Flagged fraudulent transaction UTR [${utr_number}] (Score: ${evaluation.score})`,
+          action: evaluation.level === 'HIGH' ? 'FRAUD_FLAGGED' : 'TRANSACTION_REVIEW',
+          details: `${evaluation.level === 'HIGH' ? 'High-risk' : 'Review-required'} transaction UTR [${utr_number}] (Score: ${evaluation.score}; verdict: ${evaluation.verdict})`,
           ipAddress: req.ip || req.socket.remoteAddress,
         });
       }
@@ -91,6 +91,7 @@ const verificationController = {
       const evaluation = await fraudDetectionService.evaluateRisk({
         utr: utr_number,
         amount,
+        userId: req.user?.id,
         senderVpa: sender_vpa,
         receiverVpa: receiver_vpa,
         merchantRegisteredVpa: req.user?.merchant_vpa || env.DEFAULT_MERCHANT_VPA,
@@ -147,6 +148,7 @@ const verificationController = {
             extractedUtr: extracted.extractedUtr,
             extractedAmount: extracted.extractedAmount,
             confidence: extracted.confidence,
+            receiptDateTime: extracted.receiptDateTime,
           }
         );
       }
@@ -154,6 +156,8 @@ const verificationController = {
       const evaluation = await fraudDetectionService.evaluateRisk({
         utr,
         amount,
+        userId: req.user?.id,
+        receiptDate: extracted.receiptDateTime?.date,
         senderVpa,
         receiverVpa,
         merchantRegisteredVpa: req.user?.merchant_vpa || env.DEFAULT_MERCHANT_VPA,
@@ -175,6 +179,15 @@ const verificationController = {
         notes: `OCR Scanned Receipt: ${req.file.originalname}`,
       });
 
+      if (evaluation.level === 'HIGH' || evaluation.level === 'MEDIUM') {
+        auditLogModel.log({
+          userId: req.user ? req.user.id : null,
+          action: evaluation.level === 'HIGH' ? 'FRAUD_FLAGGED' : 'TRANSACTION_REVIEW',
+          details: `${evaluation.level === 'HIGH' ? 'High-risk' : 'Review-required'} screenshot UTR [${utr}] (Score: ${evaluation.score}; verdict: ${evaluation.verdict})`,
+          ipAddress: req.ip || req.socket.remoteAddress,
+        });
+      }
+
       return apiResponse.success(
         res,
         {
@@ -184,6 +197,7 @@ const verificationController = {
             extractedUtr: extracted.extractedUtr,
             extractedAmount: extracted.extractedAmount,
             extractedReceiverVpa: extracted.extractedReceiverVpa,
+            receiptDateTime: extracted.receiptDateTime,
             confidence: extracted.confidence,
           },
         },

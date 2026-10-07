@@ -287,8 +287,12 @@ export const VerifyPage = () => {
         verification_mode: 'simulator',
         risk_score: evaluation.riskScore,
         risk_level: evaluation.riskLevel,
-        verdict: evaluation.riskScore >= 71 ? 'HIGH RISK FRAUD DETECTED' : evaluation.riskScore >= 31 ? 'SUSPICIOUS REVIEW' : 'VERIFIED GENUINE',
-        status: evaluation.riskScore >= 31 ? 'flagged' : 'verified',
+        verdict: evaluation.riskScore >= 71
+          ? 'HIGH RISK FRAUD DETECTED'
+          : evaluation.riskScore >= 31
+            ? 'SUSPICIOUS - VERIFY BANK SMS'
+            : 'LOW RISK - CONFIRM BANK CREDIT',
+        status: evaluation.riskScore >= 71 ? 'flagged' : evaluation.riskScore >= 31 ? 'review' : 'verified',
         notes: `Simulated via ${simScoringMode} engine`,
       };
 

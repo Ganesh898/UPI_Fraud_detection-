@@ -12,10 +12,10 @@ export const StatusBadge = ({ type, text, size = 'md' }) => {
     badgeClass = 'badge-safe';
     Icon = normType === 'verified' ? CheckCircle : ShieldCheck;
     if (!text) label = normType === 'verified' ? 'Verified' : 'Safe';
-  } else if (normType === 'medium' || normType === 'suspicious' || normType === 'disputed') {
+  } else if (normType === 'medium' || normType === 'suspicious' || normType === 'disputed' || normType === 'review') {
     badgeClass = 'badge-warning';
     Icon = AlertTriangle;
-    if (!text) label = normType === 'disputed' ? 'Disputed' : 'Suspicious';
+    if (!text) label = normType === 'disputed' ? 'Disputed' : normType === 'review' ? 'Needs Review' : 'Suspicious';
   } else if (normType === 'high' || normType === 'fraud' || normType === 'flagged' || normType === 'quarantined' || normType === 'rejected') {
     badgeClass = 'badge-fraud';
     Icon = normType === 'rejected' ? XCircle : (normType === 'quarantined' ? Flag : ShieldAlert);

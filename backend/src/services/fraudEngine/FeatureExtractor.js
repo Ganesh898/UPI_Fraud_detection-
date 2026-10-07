@@ -54,10 +54,12 @@ class FeatureExtractor {
     const senderIsBlacklisted = Boolean(input.senderIsBlacklisted ?? input.sender_blacklisted ?? false);
     const disputeRatio = parseFloat(input.disputeRatio ?? 0); // e.g. 0.25 = 25% chargebacks
 
-    // 8. UTR integrity & Julian syntax
+    // 8. UTR reference metadata
     const utrLength = utr.length;
     const isNumericOnly = /^\d+$/.test(utr);
     const isDuplicateUtr = Boolean(input.isDuplicateUtr ?? false);
+    const isCrossMerchantDuplicateUtr = Boolean(input.isCrossMerchantDuplicateUtr ?? false);
+    const isReceiptDateMismatch = Boolean(input.isReceiptDateMismatch ?? false);
     const isKnownSpoofDemo = Boolean(input.isKnownSpoofDemo ?? input.custom_features?.isKnownSpoofDemo ?? false);
 
     return {
@@ -92,6 +94,8 @@ class FeatureExtractor {
       utrLength,
       isNumericOnly,
       isDuplicateUtr,
+      isCrossMerchantDuplicateUtr,
+      isReceiptDateMismatch,
       isKnownSpoofDemo,
     };
   }

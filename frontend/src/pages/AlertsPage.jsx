@@ -26,7 +26,7 @@ export const AlertsPage = () => {
   const [selectedTxn, setSelectedTxn] = useState(null);
 
   const flaggedList = transactions.filter(
-    (t) => t.risk_level === 'HIGH' || t.status === 'flagged' || t.status === 'disputed'
+    (t) => t.risk_level === 'HIGH' || t.risk_level === 'MEDIUM' || t.status === 'review' || t.status === 'flagged' || t.status === 'disputed'
   );
 
   const criticalCount = flaggedList.filter((t) => t.risk_level === 'HIGH').length;
@@ -38,14 +38,14 @@ export const AlertsPage = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ffffff' }}>
-              Threat Intelligence & Fraud Alerts
+              Risk Review & Fraud Alerts
             </h1>
             <span className="badge badge-fraud" style={{ fontSize: '0.72rem' }}>
               {criticalCount} CRITICAL THREATS
             </span>
           </div>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-            Active quarantined payments intercepted by Julian syntax, OCR, and replay heuristic rules.
+            Review heuristic risk signals here; receipt OCR and UTR format checks cannot independently verify bank settlement.
           </p>
         </div>
 
@@ -103,10 +103,10 @@ export const AlertsPage = () => {
             </div>
             <div>
               <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#ef4444' }}>
-                ACTION REQUIRED: {criticalCount} Counterfeit Payments Quarantined
+                ACTION REQUIRED: {criticalCount} High-Risk Transactions Need Investigation
               </div>
               <div style={{ fontSize: '0.78rem', color: '#fca5a5' }}>
-                Replay attacks and fake APK screenshots detected at store terminals. Review counter evidence below before merchandise release.
+                High risk is not proof of fraud. Confirm the payment in your bank account and inspect the evidence before taking action.
               </div>
             </div>
           </div>
@@ -148,9 +148,9 @@ export const AlertsPage = () => {
       <div className="cyber-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Active Incident Quarantine Queue</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Risk Review & Incident Queue</h3>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              Inspect and resolve flagged transactions
+              Review medium-risk transactions; investigate high-risk or disputed transactions
             </p>
           </div>
           <span className="badge badge-neutral" style={{ fontSize: '0.72rem' }}>
@@ -164,10 +164,10 @@ export const AlertsPage = () => {
               <CheckCircle2 size={28} color="#10b981" />
             </div>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
-              Quarantine Queue is Clean!
+              Review Queue is Clear
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              No active fraud alerts. All recent transactions passed syntax and replay tests.
+              No transactions currently require manual review or investigation.
             </p>
           </div>
         ) : (
@@ -212,7 +212,7 @@ export const AlertsPage = () => {
                       <span className="text-mono" style={{ color: '#00f2fe', fontWeight: 700, fontSize: '0.85rem' }}>
                         UTR: {tx.utr_number}
                       </span>
-                      <StatusBadge type={tx.risk_level} size="sm" />
+                      <StatusBadge type={tx.status === 'review' ? 'review' : tx.risk_level} size="sm" />
                     </div>
 
                     <div style={{ fontSize: '0.8rem', color: '#ffffff', fontWeight: 700, marginTop: 4 }}>

@@ -58,6 +58,26 @@ export const VerificationResultCard = ({
     : 'rgba(16, 185, 129, 0.4)';
 
   const detectionReasons = result.detectionReasons || result.factors || [];
+  const receiptDateTime = result.ocrMetadata?.receiptDateTime;
+  const localToday = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  })();
+  const receiptDateMatchesToday = Boolean(receiptDateTime?.date && receiptDateTime.date === localToday);
+  const receiptDate = receiptDateTime?.date
+    ? new Intl.DateTimeFormat('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(`${receiptDateTime.date}T12:00:00`))
+    : null;
+  const receiptTime = receiptDateTime?.time
+    ? new Intl.DateTimeFormat('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }).format(new Date(`2000-01-01T${receiptDateTime.time}:00`))
+    : null;
 
   return (
     <div
@@ -211,6 +231,24 @@ export const VerificationResultCard = ({
             Text confidence: {Math.round(result.ocrMetadata.confidence || 0)}%
             {' · '}UTR: {result.ocrMetadata.extractedUtr || 'not read'}
             {' · '}Amount: {result.ocrMetadata.extractedAmount ?? 'not read'}
+          </div>
+          <div
+            role={receiptDateTime?.date && !receiptDateMatchesToday ? 'alert' : 'status'}
+            style={{
+              marginTop: 10,
+              padding: '10px 12px',
+              borderRadius: 7,
+              backgroundColor: receiptDateMatchesToday ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+              border: `1px solid ${receiptDateMatchesToday ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)'}`,
+              color: receiptDateMatchesToday ? '#34d399' : '#fbbf24',
+              fontWeight: 700,
+            }}
+          >
+            {receiptDateTime?.date
+              ? receiptDateMatchesToday
+                ? `Receipt date/time: ${receiptDate}${receiptTime ? ` · ${receiptTime}` : ''} — same day as today`
+                : `WARNING: Receipt date/time: ${receiptDate}${receiptTime ? ` · ${receiptTime}` : ''} — this is not today's payment date`
+              : 'Receipt date could not be read by OCR. Same-day payment could not be confirmed.'}
           </div>
           <div style={{ marginTop: 6 }}>
             OCR and risk scoring do not confirm that funds reached the bank account. Confirm credit in the bank app or statement.

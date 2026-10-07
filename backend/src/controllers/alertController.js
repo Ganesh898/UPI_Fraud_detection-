@@ -15,10 +15,14 @@ const alertController = {
         riskLevel: 'HIGH',
         limit: 50,
       });
+      const reviewRequired = transactionModel.findAll({
+        status: 'review',
+        limit: 50,
+      });
 
       // Combine unique IDs
       const map = new Map();
-      [...flagged, ...highRisk].forEach((t) => map.set(t.id, t));
+      [...flagged, ...highRisk, ...reviewRequired].forEach((t) => map.set(t.id, t));
       const alerts = Array.from(map.values()).sort((a, b) => b.id - a.id);
 
       return apiResponse.success(

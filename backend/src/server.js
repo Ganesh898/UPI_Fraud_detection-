@@ -17,6 +17,8 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const alertRoutes = require('./routes/alertRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const intelligenceRoutes = require('./routes/intelligenceRoutes');
+const intelligenceQueue = require('./services/intelligenceQueue');
 
 const app = express();
 
@@ -83,6 +85,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
 
 // ─── 404 & Global Error Handlers ──────────────────────────────────────────────
 app.use(errorHandler.notFoundHandler);
@@ -94,6 +97,8 @@ function startServer() {
     console.log('⚡ Initializing UPI Shield database schema...');
     db.initSchema();
     console.log('✅ Database schema initialized (SQLite WAL mode enabled)');
+    intelligenceQueue.start();
+    console.log('✅ Intelligence analysis queue started (SQLite-backed)');
 
     app.listen(env.PORT, () => {
       console.log('');
@@ -119,6 +124,8 @@ function startServer() {
       console.log(`  GET   /api/dashboard/stats    - Dashboard statistics`);
       console.log(`  GET   /api/admin/rules        - Fraud rule management`);
       console.log(`  GET   /api/health             - Server health check`);
+      console.log(`  POST  /api/intelligence/submissions - Queue a URL/text threat-intel analysis`);
+      console.log(`  GET   /api/intelligence/jobs  - List your intelligence analysis jobs`);
       console.log('');
     });
   } catch (error) {

@@ -171,7 +171,7 @@ export const TransactionProvider = ({ children }) => {
           addToast({ type: 'warning', title: '⚠️ SUSPICIOUS TRANSACTION', message: `UTR ${utr}: Score ${currentScore}/100. Verify bank SMS.` });
         } else {
           triggerSafeAlert(amount);
-          addToast({ type: 'success', title: '✅ PAYMENT VERIFIED GENUINE', message: `₹${parseFloat(amount || 0).toLocaleString('en-IN')} confirmed. Safe to dispatch.` });
+          addToast({ type: 'success', title: '✅ LOW RISK — CONFIRM BANK CREDIT', message: `₹${parseFloat(amount || 0).toLocaleString('en-IN')} is low risk. This score does not confirm bank settlement.` });
         }
 
         // Refresh dashboard stats
@@ -247,8 +247,8 @@ export const TransactionProvider = ({ children }) => {
       addAuditLog('SUSPICIOUS_TXN', `Investigating UTR ${utr} (Risk: ${fallbackScore})`);
     } else {
       triggerSafeAlert(amount);
-      addToast({ type: 'success', title: '✅ PAYMENT VERIFIED GENUINE', message: `₹${parseFloat(amount || 0).toLocaleString('en-IN')} confirmed. Safe to dispatch.` });
-      addAuditLog('TXN_VERIFIED', `Cleared genuine payment UTR ${utr} (₹${amount})`);
+      addToast({ type: 'success', title: '✅ LOW RISK — CONFIRM BANK CREDIT', message: `₹${parseFloat(amount || 0).toLocaleString('en-IN')} is low risk. This score does not confirm bank settlement.` });
+      addAuditLog('TXN_LOW_RISK', `Low-risk UTR ${utr} (₹${amount}); bank credit still requires confirmation`);
     }
 
     return { transaction: newTxn, evaluation };

@@ -23,7 +23,7 @@ export const HistoryPage = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [riskFilter, setRiskFilter] = useState('ALL'); // ALL, LOW, MEDIUM, HIGH
-  const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, verified, flagged, disputed, rejected
+  const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, verified, review, flagged, disputed, rejected
   const [selectedTxn, setSelectedTxn] = useState(null);
 
   // Filtered transactions
@@ -127,6 +127,7 @@ export const HistoryPage = () => {
           >
             <option value="ALL">All Statuses</option>
             <option value="verified">Verified</option>
+            <option value="review">Needs Review</option>
             <option value="flagged">Flagged</option>
             <option value="disputed">Disputed</option>
             <option value="rejected">Rejected</option>
@@ -256,7 +257,11 @@ export const HistoryPage = () => {
                         </div>
                       </td>
                       <td>
-                        <StatusBadge type={tx.risk_level} text={tx.status} size="sm" />
+                        <StatusBadge
+                          type={tx.status === 'review' ? 'review' : tx.risk_level}
+                          text={tx.status === 'review' ? 'Needs Review' : tx.status}
+                          size="sm"
+                        />
                       </td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <button
@@ -323,7 +328,11 @@ export const HistoryPage = () => {
               </div>
               <div>
                 <span style={{ color: 'var(--text-muted)' }}>Status: </span>
-                <StatusBadge type={selectedTxn.risk_level} text={selectedTxn.status} size="sm" />
+                <StatusBadge
+                  type={selectedTxn.status === 'review' ? 'review' : selectedTxn.risk_level}
+                  text={selectedTxn.status === 'review' ? 'Needs Review' : selectedTxn.status}
+                  size="sm"
+                />
               </div>
               <div>
                 <span style={{ color: 'var(--text-muted)' }}>Timestamp: </span>

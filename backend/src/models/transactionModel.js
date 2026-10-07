@@ -57,6 +57,17 @@ const transactionModel = {
     return db.query('SELECT * FROM transactions WHERE utr_number = ? ORDER BY id DESC', [utr.trim()]);
   },
 
+  findCrossMerchantByUtr: (utr, userId) => {
+    if (!utr || !userId) return [];
+    return db.query(
+      `SELECT id, user_id, status, amount, receiver_vpa
+       FROM transactions
+       WHERE utr_number = ? AND user_id IS NOT NULL AND user_id != ? AND status != 'rejected'
+       ORDER BY id DESC`,
+      [utr.trim(), userId]
+    );
+  },
+
   findAll: ({
     userId = null,
     riskLevel = null,

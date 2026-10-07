@@ -25,7 +25,9 @@ export const Navbar = ({ currentPath, onNavigate, onToggleMobileMenu }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSandboxModal, setShowSandboxModal] = useState(false);
 
-  const flaggedTransactions = transactions.filter((t) => t.risk_level === 'HIGH' || t.status === 'flagged');
+  const flaggedTransactions = transactions.filter(
+    (t) => t.risk_level === 'HIGH' || t.status === 'flagged' || t.status === 'review'
+  );
 
   const pageNames = {
     '/': 'Home',
@@ -183,7 +185,7 @@ export const Navbar = ({ currentPath, onNavigate, onToggleMobileMenu }) => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 6, borderBottom: '1px solid var(--border-subtle)' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff' }}>High-Risk Threats</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff' }}>Risk Reviews & Threats</span>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{flaggedTransactions.length} unresolved</span>
               </div>
 
