@@ -85,6 +85,7 @@ const fraudDetectionService = {
 
       // Structural
       isDuplicateUtr,
+      isKnownSpoofDemo: Boolean(customFeatures.isKnownSpoofDemo),
       scoring_mode: scoringMode,
     };
 
@@ -107,20 +108,21 @@ const fraudDetectionService = {
     }));
 
     // Check receiver VPA mismatch with store registered VPA
+    let receiverVpaMismatch = false;
     if (cleanReceiver && merchantRegisteredVpa) {
       if (cleanReceiver !== merchantRegisteredVpa.trim().toLowerCase()) {
+        receiverVpaMismatch = true;
         const vpaMismatchFactor = {
           code: 'VPA_MISMATCH',
-          title: 'Receiver Beneficiary VPA Discrepancy',
-          description: `Payee is addressed to [${receiverVpa}], which does not match your registered store VPA [${merchantRegisteredVpa}].`,
-          points: 30,
-          severity: 'HIGH',
+          title: 'Payee Does Not Match Registered Merchant',
+          description: `Receipt names payee [${receiverVpa}], not the registered merchant VPA [${merchantRegisteredVpa}]. This mismatch does not by itself prove the receipt is fake; confirm the expected payee and bank credit.`,
+          points: 0,
+          severity: 'LOW',
           category: 'Counterparty Risk',
           observed: receiverVpa,
           baseline: merchantRegisteredVpa,
         };
         factors.push(vpaMismatchFactor);
-        engineOutput.riskScore = Math.min(100, engineOutput.riskScore + 30);
       }
     }
 
@@ -135,11 +137,15 @@ const fraudDetectionService = {
       legacyStatus = 'flagged';
     } else if (engineOutput.riskScore >= 31) {
       legacyRiskLevel = 'MEDIUM';
-      legacyVerdict = 'SUSPICIOUS - VERIFY BANK SMS';
+      legacyVerdict = receiverVpaMismatch
+        ? 'PAYEE MISMATCH - VERIFY MERCHANT CREDIT'
+        : 'SUSPICIOUS - VERIFY BANK SMS';
       legacyStatus = 'flagged';
     } else {
       legacyRiskLevel = 'LOW';
-      legacyVerdict = 'VERIFIED GENUINE';
+      legacyVerdict = receiverVpaMismatch
+        ? 'PAYEE MISMATCH - CONFIRM RECIPIENT'
+        : 'VERIFIED GENUINE';
       legacyStatus = 'verified';
     }
 

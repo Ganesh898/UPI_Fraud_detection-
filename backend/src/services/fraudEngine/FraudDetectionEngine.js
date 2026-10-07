@@ -47,7 +47,7 @@ class FraudDetectionEngine {
         finalAction = 'STEP-UP AUTHENTICATION: ML model flagged moderate behavioral risk. Request 2FA step-up.';
       } else {
         finalLevel = 'Low Risk';
-        finalAction = 'APPROVE & CLEAR: ML classification confirms legitimate transaction pattern.';
+        finalAction = 'LOW RISK: The prototype model found no strong anomaly signals. Confirm credit in the bank app or statement before releasing goods.';
       }
     } else if (mode === 'HYBRID_ENSEMBLE') {
       // Hybrid Ensemble: 60% Rule-based weight + 40% ML model weight
@@ -55,7 +55,7 @@ class FraudDetectionEngine {
 
       // Hard safety guardrails (if critical compliance rule triggers, override to High Risk)
       const hasCriticalHit = ruleResult.detectionReasons.some(
-        (r) => r.severity === 'CRITICAL' || r.code === 'RULE_REPLAY_DUPLICATE_UTR' || r.code === 'RULE_RECIPIENT_BLACKLISTED'
+        (r) => r.severity === 'CRITICAL' || r.code === 'RULE_RECIPIENT_BLACKLISTED'
       );
       if (hasCriticalHit && blended < 75) {
         blended = Math.max(85, blended);

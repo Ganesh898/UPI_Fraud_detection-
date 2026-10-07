@@ -4,7 +4,7 @@ export const DEMO_USERS = {
   merchant: {
     id: 1,
     name: 'Vikram Sharma',
-    email: 'merchant@upishield.test',
+    email: 'merchant@upishield.demo',
     role: 'merchant',
     business_name: 'Apex Supermart & Electronics',
     merchant_vpa: 'apex.retail@okhdfcbank',
@@ -17,7 +17,7 @@ export const DEMO_USERS = {
   admin: {
     id: 2,
     name: 'Ananya Roy',
-    email: 'admin@upishield.test',
+    email: 'admin@upishield.demo',
     role: 'admin',
     business_name: 'NPCI & Banking Fraud Risk Operations',
     merchant_vpa: 'compliance@npci.gov.in',
@@ -252,6 +252,7 @@ export const OCR_SAMPLE_RECEIPTS = [
     id: 'sample_spoof_apk',
     name: '⚠️ Spoof APK Receipt (Fake PhonePe / Paytm App)',
     badge: 'HIGH FRAUD',
+    isKnownSpoofDemo: true,
     amount: '₹3,500.00',
     utr: '9381029481',
     sender: 'spoof.bot@fakeupi',

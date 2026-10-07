@@ -58,6 +58,7 @@ class FeatureExtractor {
     const utrLength = utr.length;
     const isNumericOnly = /^\d+$/.test(utr);
     const isDuplicateUtr = Boolean(input.isDuplicateUtr ?? false);
+    const isKnownSpoofDemo = Boolean(input.isKnownSpoofDemo ?? input.custom_features?.isKnownSpoofDemo ?? false);
 
     return {
       amount,
@@ -91,6 +92,7 @@ class FeatureExtractor {
       utrLength,
       isNumericOnly,
       isDuplicateUtr,
+      isKnownSpoofDemo,
     };
   }
 }

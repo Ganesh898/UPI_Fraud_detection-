@@ -134,6 +134,23 @@ const verificationController = {
       const senderVpa = req.body.sender_vpa || extracted.extractedSenderVpa;
       const receiverVpa = req.body.receiver_vpa || extracted.extractedReceiverVpa || req.user?.merchant_vpa || env.DEFAULT_MERCHANT_VPA;
 
+      if (!utr || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+        const missingFields = [
+          !utr && 'UTR',
+          (!Number.isFinite(Number(amount)) || Number(amount) <= 0) && 'payment amount',
+        ].filter(Boolean);
+        return apiResponse.error(
+          res,
+          `OCR could not read the ${missingFields.join(' and ')} from this receipt. No transaction was recorded; please verify the missing field manually.`,
+          422,
+          {
+            extractedUtr: extracted.extractedUtr,
+            extractedAmount: extracted.extractedAmount,
+            confidence: extracted.confidence,
+          }
+        );
+      }
+
       const evaluation = await fraudDetectionService.evaluateRisk({
         utr,
         amount,

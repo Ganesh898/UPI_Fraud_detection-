@@ -39,11 +39,10 @@ export const Navbar = ({ currentPath, onNavigate, onToggleMobileMenu }) => {
     '/settings': 'Platform & Audio Preferences',
   };
 
-  const handleRoleToggle = () => {
-    if (isAdmin) {
-      loginAsRole('merchant');
-    } else {
-      loginAsRole('admin');
+  const handleRoleToggle = async () => {
+    const result = await loginAsRole(isAdmin ? 'merchant' : 'admin');
+    if (!result.success) {
+      addToast({ type: 'danger', title: 'Role switch failed', message: result.error });
     }
   };
 

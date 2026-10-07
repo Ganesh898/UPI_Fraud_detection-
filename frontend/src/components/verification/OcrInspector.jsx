@@ -1,43 +1,54 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Upload, FileText, CheckCircle2, AlertOctagon, RefreshCw, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { OCR_SAMPLE_RECEIPTS } from '../../constants/initialData';
 
-export const OcrInspector = ({ onSelectReceipt, onAnalyze, isScanning }) => {
+export const OcrInspector = ({ onAnalyze, isScanning, analysisError }) => {
   const [selectedSampleId, setSelectedSampleId] = useState(OCR_SAMPLE_RECEIPTS[0].id);
   const [customFile, setCustomFile] = useState(null);
+  const [fileError, setFileError] = useState('');
 
   const activeSample = OCR_SAMPLE_RECEIPTS.find((s) => s.id === selectedSampleId) || OCR_SAMPLE_RECEIPTS[0];
+
+  useEffect(() => () => {
+    if (customFile?.url) URL.revokeObjectURL(customFile.url);
+  }, [customFile]);
 
   const handleSelectSample = (sample) => {
     setSelectedSampleId(sample.id);
     setCustomFile(null);
-    onSelectReceipt(sample);
+    setFileError('');
   };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setCustomFile({
-        name: file.name,
-        size: (file.size / 1024).toFixed(1) + ' KB',
-        url: URL.createObjectURL(file),
-      });
-      // Generate synthetic extracted data for uploaded image
-      onSelectReceipt({
-        id: 'custom_upload',
-        name: `Uploaded Receipt: ${file.name}`,
-        amount: '₹1,500.00',
-        utr: '9481029482', // Suspicious 10 digit to demonstrate detection
-        sender: 'user.receipt@paytm',
-        receiver: 'apex.retail@okhdfcbank',
-        date: '2026-10-07 15:40',
-        app: 'Custom Uploaded Screenshot',
-        description: 'User uploaded payment screenshot scanned via OCR pipeline.',
-        artifacts: [
-          'OCR text extraction confidence: 94.2%',
-          'Checking layout alignment with NPCI template',
-        ],
-      });
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setFileError('Please upload a JPG, PNG, or WebP receipt image.');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFileError('Image must be 5 MB or smaller.');
+      e.target.value = '';
+      return;
+    }
+
+    setFileError('');
+    setCustomFile({
+      file,
+      name: file.name,
+      size: (file.size / 1024).toFixed(1) + ' KB',
+      url: URL.createObjectURL(file),
+    });
+  };
+
+  const handleAnalyze = () => {
+    if (customFile) {
+      onAnalyze({ file: customFile.file, name: customFile.name });
+    } else {
+      onAnalyze(activeSample);
     }
   };
 
@@ -130,7 +141,7 @@ export const OcrInspector = ({ onSelectReceipt, onAnalyze, isScanning }) => {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, alignItems: 'center' }}>
-          {/* Simulated Mobile Receipt Screen */}
+          {/* Receipt preview */}
           <div
             style={{
               backgroundColor: '#050811',
@@ -144,55 +155,67 @@ export const OcrInspector = ({ onSelectReceipt, onAnalyze, isScanning }) => {
               position: 'relative',
             }}
           >
-            {/* Top Phone speaker notch */}
-            <div style={{ width: 48, height: 4, borderRadius: 2, backgroundColor: 'rgba(255, 255, 255, 0.2)', margin: '0 auto 14px' }} />
+            {customFile ? (
+              <>
+                <img
+                  src={customFile.url}
+                  alt={`Uploaded payment receipt: ${customFile.name}`}
+                  style={{ display: 'block', maxWidth: '100%', maxHeight: 420, objectFit: 'contain', margin: '0 auto', borderRadius: 8 }}
+                />
+                <div style={{ color: '#ffffff', fontSize: '0.78rem', marginTop: 10, textAlign: 'center' }}>
+                  {customFile.name} · {customFile.size}
+                </div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginTop: 6, textAlign: 'center' }}>
+                  No receipt values are assumed; the uploaded image will be read by OCR.
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ width: 48, height: 4, borderRadius: 2, backgroundColor: 'rgba(255, 255, 255, 0.2)', margin: '0 auto 14px' }} />
+                <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      backgroundColor: activeSample.color === '#ef4444' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                      color: activeSample.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 8px',
+                      border: `1px solid ${activeSample.color}`,
+                    }}
+                  >
+                    {activeSample.color === '#ef4444' ? <AlertOctagon size={24} /> : <CheckCircle2 size={24} />}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff' }}>Payment Successful</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                    {activeSample.amount}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{activeSample.app}</div>
+                </div>
 
-            <div style={{ textAlign: 'center', marginBottom: 14 }}>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '50%',
-                  backgroundColor: activeSample.color === '#ef4444' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                  color: activeSample.color,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 8px',
-                  border: `1px solid ${activeSample.color}`,
-                }}
-              >
-                {activeSample.color === '#ef4444' ? <AlertOctagon size={24} /> : <CheckCircle2 size={24} />}
-              </div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff' }}>
-                Payment Successful
-              </div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-                {activeSample.amount}
-              </div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                {activeSample.app}
-              </div>
-            </div>
-
-            <div style={{ fontSize: '0.72rem', backgroundColor: 'rgba(255, 255, 255, 0.03)', padding: 10, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>UPI Ref (UTR):</span>
-                <span style={{ color: '#00f2fe', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{activeSample.utr}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>To:</span>
-                <span style={{ color: '#ffffff', wordBreak: 'break-all' }}>{activeSample.receiver}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>From:</span>
-                <span style={{ color: '#ffffff' }}>{activeSample.sender}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Time:</span>
-                <span style={{ color: '#ffffff' }}>{activeSample.date}</span>
-              </div>
-            </div>
+                <div style={{ fontSize: '0.72rem', backgroundColor: 'rgba(255, 255, 255, 0.03)', padding: 10, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>UPI Ref (UTR):</span>
+                    <span style={{ color: '#00f2fe', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{activeSample.utr}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>To:</span>
+                    <span style={{ color: '#ffffff', wordBreak: 'break-all' }}>{activeSample.receiver}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>From:</span>
+                    <span style={{ color: '#ffffff' }}>{activeSample.sender}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Time:</span>
+                    <span style={{ color: '#ffffff' }}>{activeSample.date}</span>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Custom file upload input */}
             <div style={{ marginTop: 12 }}>
@@ -215,11 +238,12 @@ export const OcrInspector = ({ onSelectReceipt, onAnalyze, isScanning }) => {
                 <span>Upload Custom Image</span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   style={{ display: 'none' }}
                   onChange={handleFileUpload}
                 />
               </label>
+              {fileError && <div role="alert" style={{ color: '#fca5a5', fontSize: '0.72rem', marginTop: 6 }}>{fileError}</div>}
             </div>
           </div>
 
@@ -230,11 +254,16 @@ export const OcrInspector = ({ onSelectReceipt, onAnalyze, isScanning }) => {
               <span>OCR Anomaly & Forensic Breakdown</span>
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
-              {activeSample.description}
+              {customFile
+                ? 'The uploaded receipt image is sent to the backend OCR engine. Risk analysis runs only on fields actually extracted from that image.'
+                : activeSample.description}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-              {activeSample.artifacts.map((art, idx) => (
+              {(customFile
+                ? ['OCR extracts receipt data from the selected image.', 'Unrecognized or incomplete fields are sent for manual review, not classified as fraud.']
+                : activeSample.artifacts
+              ).map((art, idx) => (
                 <div
                   key={idx}
                   style={{
@@ -244,9 +273,9 @@ export const OcrInspector = ({ onSelectReceipt, onAnalyze, isScanning }) => {
                     fontSize: '0.75rem',
                     padding: '8px 10px',
                     borderRadius: 6,
-                    backgroundColor: activeSample.color === '#ef4444' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                    border: `1px solid ${activeSample.color === '#ef4444' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
-                    color: activeSample.color === '#ef4444' ? '#fca5a5' : '#86efac',
+                    backgroundColor: !customFile && activeSample.color === '#ef4444' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                    border: `1px solid ${!customFile && activeSample.color === '#ef4444' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
+                    color: !customFile && activeSample.color === '#ef4444' ? '#fca5a5' : '#86efac',
                   }}
                 >
                   <span style={{ fontWeight: 800 }}>•</span>
@@ -257,7 +286,7 @@ export const OcrInspector = ({ onSelectReceipt, onAnalyze, isScanning }) => {
 
             <button
               className="btn btn-primary btn-lg"
-              onClick={() => onAnalyze(activeSample)}
+              onClick={handleAnalyze}
               disabled={isScanning}
               style={{ width: '100%', gap: 10 }}
             >
@@ -269,10 +298,15 @@ export const OcrInspector = ({ onSelectReceipt, onAnalyze, isScanning }) => {
               ) : (
                 <>
                   <Sparkles size={18} />
-                  <span>Analyze Receipt & Calculate Risk</span>
+                  <span>{customFile ? 'Run OCR on Uploaded Receipt' : 'Analyze Receipt & Calculate Risk'}</span>
                 </>
               )}
             </button>
+            {analysisError && (
+              <div role="alert" style={{ color: '#fca5a5', fontSize: '0.78rem', marginTop: 10 }}>
+                {analysisError}
+              </div>
+            )}
           </div>
         </div>
       </div>

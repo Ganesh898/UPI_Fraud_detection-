@@ -171,7 +171,7 @@ const transactionModel = {
 
   getSenderMetrics: (senderVpa, receiverVpa = null) => {
     if (!senderVpa) {
-      return { avgAmount: 850, count1h: 1, count5m: 1, isNewRecipient: true, disputeCount: 0 };
+      return { avgAmount: 850, count1h: 1, count5m: 1, isNewRecipient: false, disputeCount: 0 };
     }
     const cleanSender = senderVpa.trim().toLowerCase();
     const cleanReceiver = receiverVpa ? receiverVpa.trim().toLowerCase() : null;
@@ -211,7 +211,7 @@ const transactionModel = {
         disputeCount: disputes,
       };
     } catch (_) {
-      return { avgAmount: 850, count1h: 1, count5m: 1, isNewRecipient: true, disputeCount: 0 };
+      return { avgAmount: 850, count1h: 1, count5m: 1, isNewRecipient: false, disputeCount: 0 };
     }
   },
 };

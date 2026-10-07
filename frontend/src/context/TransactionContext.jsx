@@ -117,14 +117,14 @@ export const TransactionProvider = ({ children }) => {
 
   // Load data when backend comes online
   useEffect(() => {
-    if (isBackendConnected) {
+    if (isBackendConnected && user) {
       loadTransactions();
       loadDashboardStats();
       loadFraudRules();
       loadBlacklist();
       loadAuditLogs();
     }
-  }, [isBackendConnected]);
+  }, [isBackendConnected, user, loadTransactions, loadDashboardStats, loadFraudRules, loadBlacklist, loadAuditLogs]);
 
   // ─── Core: Verify Payment ─────────────────────────────────────────────────────
   const verifyPayment = async ({
@@ -135,20 +135,25 @@ export const TransactionProvider = ({ children }) => {
     mode = 'manual',
     notes = '',
     screenshotUrl = null,
+    screenshotFile = null,
+    customFeatures = {},
   }) => {
     const merchantVpa = user?.merchant_vpa || 'apex.retail@okhdfcbank';
 
     try {
       if (isBackendConnected) {
         // ─── Backend verification ─────────────────────────────────────────────
-        const res = await verifyApi.manual({
-          utr_number: utr,
-          amount: parseFloat(amount),
-          sender_vpa: senderVpa || undefined,
-          receiver_vpa: receiverVpa || merchantVpa,
-          mode,
-          notes: notes || `Verified via ${mode}`,
-        });
+        const res = screenshotFile
+          ? await verifyApi.screenshot(screenshotFile)
+          : await verifyApi.manual({
+            utr_number: utr,
+            amount: parseFloat(amount),
+            sender_vpa: senderVpa || undefined,
+            receiver_vpa: receiverVpa || merchantVpa,
+            mode,
+            notes: notes || `Verified via ${mode}`,
+            custom_features: customFeatures,
+          });
 
         const { transaction, evaluation } = res.data;
 
@@ -171,10 +176,29 @@ export const TransactionProvider = ({ children }) => {
 
         // Refresh dashboard stats
         loadDashboardStats();
-        return { transaction, evaluation };
+        return {
+          transaction,
+          evaluation: res.data.ocrMetadata
+            ? { ...evaluation, ocrMetadata: res.data.ocrMetadata }
+            : evaluation,
+        };
       }
     } catch (err) {
+      if (screenshotFile) {
+        addToast({
+          type: 'danger',
+          title: 'Receipt OCR failed',
+          message: err.message || 'Could not analyze this image. Please verify its fields manually.',
+        });
+        throw err;
+      }
       addToast({ type: 'warning', title: 'Backend Unavailable', message: 'Running offline analysis.' });
+    }
+
+    if (screenshotFile) {
+      const error = new Error('Receipt OCR requires a connection to the backend. Please reconnect and try again.');
+      addToast({ type: 'danger', title: 'Receipt OCR unavailable', message: error.message });
+      throw error;
     }
 
     // ─── Offline fallback using local fraud engine ──────────────────────────
@@ -186,6 +210,7 @@ export const TransactionProvider = ({ children }) => {
       existingTransactions: transactions,
       blacklist,
       merchantRegisteredVpa: merchantVpa,
+      customFeatures,
     });
 
     const newTxn = {

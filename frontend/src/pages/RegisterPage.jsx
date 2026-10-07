@@ -25,7 +25,7 @@ export const RegisterPage = ({ onNavigate }) => {
     return pattern.test(vpa.trim());
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateVpa(formData.merchantVpa)) {
       setVpaError('Please enter a valid UPI VPA handle (e.g. yourstore@okhdfcbank)');
@@ -34,16 +34,19 @@ export const RegisterPage = ({ onNavigate }) => {
     setVpaError('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      register(formData);
-      setIsLoading(false);
-      addToast({
-        type: 'success',
-        title: 'Merchant Terminal Registered',
-        message: `Welcome ${formData.businessName}! POS Shield is now active.`,
-      });
-      onNavigate('/dashboard');
-    }, 500);
+    const result = await register(formData);
+    setIsLoading(false);
+    if (!result.success) {
+      setVpaError(result.error);
+      return;
+    }
+
+    addToast({
+      type: 'success',
+      title: 'Merchant Terminal Registered',
+      message: `Welcome ${formData.businessName}! POS Shield is now active.`,
+    });
+    onNavigate('/dashboard');
   };
 
   return (

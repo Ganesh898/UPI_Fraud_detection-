@@ -58,6 +58,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginAsRole = async (role) => {
+    const credentials = {
+      merchant: { email: 'merchant@upishield.demo', password: 'Demo@2026' },
+      admin: { email: 'admin@upishield.demo', password: 'Admin@2026' },
+    };
+
+    const target = credentials[role] || credentials.merchant;
+    return login(target.email, target.password);
+  };
+
   const register = async ({ name, email, password, businessName, merchantVpa, role = 'merchant' }) => {
     setIsLoading(true);
     setAuthError(null);
@@ -112,6 +122,7 @@ export const AuthProvider = ({ children }) => {
         isAdmin: user?.role === 'admin',
         isAuthenticated: !!user,
         login,
+        loginAsRole,
         register,
         logout,
         updateProfile,

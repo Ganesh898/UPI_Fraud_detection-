@@ -18,14 +18,26 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSound } from '../context/SoundContext';
+import { useTransactions } from '../context/TransactionContext';
 import { ThreatRadar } from '../components/common/ThreatRadar';
 import { generateAuthenticUtr } from '../services/fraudEngine';
 
 export const LandingPage = ({ onNavigate }) => {
   const { loginAsRole } = useAuth();
   const { triggerSafeAlert, triggerFraudAlert } = useSound();
+  const { addToast } = useTransactions();
   const [demoUtr, setDemoUtr] = useState('628109482914');
   const [demoStatus, setDemoStatus] = useState(null);
+
+  const activateDemo = async (role, destination) => {
+    const result = await loginAsRole(role);
+    if (!result.success) {
+      addToast({ type: 'danger', title: 'Demo login failed', message: result.error });
+      onNavigate('/login');
+      return;
+    }
+    onNavigate(destination);
+  };
 
   const handleTestAuthentic = () => {
     const valid = generateAuthenticUtr();
@@ -109,10 +121,7 @@ export const LandingPage = ({ onNavigate }) => {
           </button>
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => {
-              loginAsRole('merchant');
-              onNavigate('/verify');
-            }}
+            onClick={() => activateDemo('merchant', '/verify')}
           >
             Launch POS Verifier
           </button>
@@ -183,10 +192,7 @@ export const LandingPage = ({ onNavigate }) => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 50 }}>
           <button
             className="btn btn-primary btn-lg"
-            onClick={() => {
-              loginAsRole('merchant');
-              onNavigate('/verify');
-            }}
+            onClick={() => activateDemo('merchant', '/verify')}
             style={{ fontSize: '1rem', padding: '14px 28px', gap: 10 }}
           >
             <ScanLine size={20} />
@@ -402,10 +408,7 @@ export const LandingPage = ({ onNavigate }) => {
           <span>•</span>
           <span
             style={{ color: '#00f2fe', cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => {
-              loginAsRole('admin');
-              onNavigate('/admin');
-            }}
+            onClick={() => activateDemo('admin', '/admin')}
           >
             Compliance Console
           </span>

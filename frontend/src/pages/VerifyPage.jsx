@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScanLine,
   Image as ImageIcon,
@@ -43,6 +43,8 @@ export const VerifyPage = () => {
 
   // Result state
   const [activeResult, setActiveResult] = useState(null);
+  const [analysisError, setAnalysisError] = useState('');
+  const [simulatorRunRequested, setSimulatorRunRequested] = useState(false);
 
   // ─── Simulator State (All 9 Demo Features) ──────────────────────────────────
   const [simAmount, setSimAmount] = useState(1450);
@@ -63,35 +65,60 @@ export const VerifyPage = () => {
   const [simSenderVpa, setSimSenderVpa] = useState('priya.retail@okhdfcbank');
   const [simReceiverVpa, setSimReceiverVpa] = useState('merchant.pos@okhdfcbank');
 
+  const runManualPreset = async ({ utr, amount, senderVpa, notes, customFeatures = {} }) => {
+    setUtrInput(utr);
+    setAmountInput(String(amount));
+    setSenderVpaInput(senderVpa);
+    setNotesInput(notes);
+    setActiveResult(null);
+    setIsScanning(true);
+    try {
+      const result = await verifyPayment({
+        utr,
+        amount,
+        senderVpa,
+        receiverVpa: user?.merchant_vpa || 'apex.retail@okhdfcbank',
+        mode: 'manual',
+        notes,
+        customFeatures,
+      });
+      setActiveResult(result);
+    } catch (error) {
+      setAnalysisError(error.message || 'Preset verification failed.');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   // Quick preset scenario loaders for demo judges
-  const handleLoadAuthentic = () => {
-    const valid = generateAuthenticUtr();
-    setUtrInput(valid);
-    setAmountInput('850');
-    setSenderVpaInput('kavita.nair@okhdfcbank');
-    setNotesInput('Valid in-store payment');
-  };
+  const handleLoadAuthentic = () => runManualPreset({
+    utr: generateAuthenticUtr(),
+    amount: 850,
+    senderVpa: 'kavita.nair@okhdfcbank',
+    notes: 'Valid in-store payment',
+  });
 
-  const handleLoadReplay = () => {
-    setUtrInput('628109482914');
-    setAmountInput('1450');
-    setSenderVpaInput('recycled.scammer@ybl');
-    setNotesInput('Attempted duplicate presentation');
-  };
+  const handleLoadReplay = () => runManualPreset({
+    utr: '628109482914',
+    amount: 1450,
+    senderVpa: 'recycled.scammer@ybl',
+    notes: 'Attempted duplicate presentation',
+  });
 
-  const handleLoadInvalidJulian = () => {
-    setUtrInput('639908123456');
-    setAmountInput('3200');
-    setSenderVpaInput('fake.generator@paytm');
-    setNotesInput('Impossible Julian day artifact');
-  };
+  const handleLoadInvalidJulian = () => runManualPreset({
+    utr: '639908123456',
+    amount: 3200,
+    senderVpa: 'fake.generator@paytm',
+    notes: 'Impossible Julian day artifact',
+  });
 
-  const handleLoadSpoof10Digit = () => {
-    setUtrInput('9381029481');
-    setAmountInput('4500');
-    setSenderVpaInput('spoof.apk@ybl');
-    setNotesInput('Paytm Spoof APK signature');
-  };
+  const handleLoadSpoof10Digit = () => runManualPreset({
+    utr: '9381029481',
+    amount: 4500,
+    senderVpa: 'spoof.apk@ybl',
+    notes: 'Paytm Spoof APK signature',
+    customFeatures: { isKnownSpoofDemo: true },
+  });
 
   // ─── Simulator Preset Scenarios ─────────────────────────────────────────────
   const applySimPreset = (presetName) => {
@@ -213,6 +240,8 @@ export const VerifyPage = () => {
       default:
         break;
     }
+    setActiveResult(null);
+    setSimulatorRunRequested(true);
   };
 
   // Run the Simulator Evaluation
@@ -226,7 +255,11 @@ export const VerifyPage = () => {
         utr: simUtr,
         senderVpa: simSenderVpa,
         receiverVpa: simReceiverVpa,
-        timestamp: simIsOffHours ? '2026-10-07T03:15:00.000Z' : new Date().toISOString(),
+        timestamp: (() => {
+          const timestamp = new Date();
+          if (simIsOffHours) timestamp.setHours(3, 15, 0, 0);
+          return timestamp.toISOString();
+        })(),
         txnCountLast1Hour: simTxnFrequency1h,
         txnCountLast5Min: simTxnVelocity5m,
         senderHistoricalAvg: simSenderAvg,
@@ -255,7 +288,7 @@ export const VerifyPage = () => {
         risk_score: evaluation.riskScore,
         risk_level: evaluation.riskLevel,
         verdict: evaluation.riskScore >= 71 ? 'HIGH RISK FRAUD DETECTED' : evaluation.riskScore >= 31 ? 'SUSPICIOUS REVIEW' : 'VERIFIED GENUINE',
-        status: evaluation.riskScore >= 71 ? 'flagged' : 'verified',
+        status: evaluation.riskScore >= 31 ? 'flagged' : 'verified',
         notes: `Simulated via ${simScoringMode} engine`,
       };
 
@@ -264,13 +297,19 @@ export const VerifyPage = () => {
     }, 350);
   };
 
-  const handleManualSubmit = (e) => {
+  useEffect(() => {
+    if (!simulatorRunRequested) return;
+    setSimulatorRunRequested(false);
+    handleRunSimulator();
+  }, [simulatorRunRequested]);
+
+  const handleManualSubmit = async (e) => {
     e.preventDefault();
     if (!utrInput) return;
 
     setIsScanning(true);
-    setTimeout(() => {
-      const res = verifyPayment({
+    try {
+      const result = await verifyPayment({
         utr: utrInput,
         amount: amountInput,
         senderVpa: senderVpaInput,
@@ -278,26 +317,48 @@ export const VerifyPage = () => {
         mode: 'manual',
         notes: notesInput || 'Manual Counter Check',
       });
-      setActiveResult(res);
+      setActiveResult(result);
+    } finally {
       setIsScanning(false);
-    }, 450);
+    }
   };
 
-  const handleOcrAnalyze = (sampleReceipt) => {
+  const handleOcrAnalyze = async (sampleReceipt) => {
     setIsScanning(true);
-    setTimeout(() => {
+    setAnalysisError('');
+    try {
+      if (sampleReceipt.file) {
+        const result = await verifyPayment({
+          utr: '',
+          amount: 0,
+          mode: 'ocr_screenshot',
+          screenshotFile: sampleReceipt.file,
+          notes: `OCR receipt: ${sampleReceipt.name}`,
+        });
+        setActiveResult(result);
+        return;
+      }
+
       const cleanAmt = (sampleReceipt.amount || '').replace(/[^0-9.]/g, '');
-      const res = verifyPayment({
+      const result = await verifyPayment({
         utr: sampleReceipt.utr,
         amount: cleanAmt,
         senderVpa: sampleReceipt.sender,
         receiverVpa: sampleReceipt.receiver,
         mode: 'ocr_screenshot',
         notes: sampleReceipt.name,
+        customFeatures: { isKnownSpoofDemo: sampleReceipt.isKnownSpoofDemo },
       });
-      setActiveResult(res);
+      setActiveResult(result);
+    } catch (error) {
+      const extracted = error.errors;
+      const extractionSummary = extracted
+        ? ` OCR read UTR: ${extracted.extractedUtr || 'not detected'}; amount: ${extracted.extractedAmount ?? 'not detected'} (${Math.round(extracted.confidence || 0)}% text confidence).`
+        : '';
+      setAnalysisError(`${error.message || 'Receipt analysis failed. Please check the image and try again.'}${extractionSummary}`);
+    } finally {
       setIsScanning(false);
-    }, 800);
+    }
   };
 
   const handleReset = () => {
@@ -856,9 +917,9 @@ export const VerifyPage = () => {
           {/* TAB 3: SCREENSHOT OCR INSPECTOR */}
           {activeTab === 'ocr' && (
             <OcrInspector
-              onSelectReceipt={(receipt) => {}}
               onAnalyze={handleOcrAnalyze}
               isScanning={isScanning}
+              analysisError={analysisError}
             />
           )}
         </>

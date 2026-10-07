@@ -49,8 +49,8 @@ class MLModelScorer {
     logit += (features.senderIsBlacklisted ? 4.5 : 0);
     logit += Math.min(3.0, features.senderPastFraudCount * 1.5);
 
-    logit += (features.isDuplicateUtr ? 4.0 : 0);
     logit += (!features.isNumericOnly || features.utrLength !== 12 ? 2.5 : 0);
+    logit += (features.isKnownSpoofDemo ? 5.0 : 0);
 
     // Sigmoid function: P(Fraud) = 1 / (1 + e^-logit)
     const probability = 1 / (1 + Math.exp(-logit));

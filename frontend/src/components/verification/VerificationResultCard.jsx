@@ -146,7 +146,7 @@ export const VerificationResultCard = ({
             </div>
             <div style={{ fontSize: '0.78rem', color: bannerColor, fontWeight: 600, marginTop: 2 }}>
               {isSafe
-                ? 'Payment cleared. Behavioral and structural indicators within safe thresholds.'
+                ? 'No significant risk signals detected. Confirm the credit in your bank app before releasing goods.'
                 : isSuspicious
                 ? 'Elevated risk detected. Hold settlement and execute step-up verification.'
                 : 'CRITICAL WARNING: High fraud probability detected. Settlement blocked.'}
@@ -193,6 +193,30 @@ export const VerificationResultCard = ({
           {recommendedAction}
         </div>
       </div>
+
+      {result.ocrMetadata && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            marginBottom: 20,
+            backgroundColor: 'rgba(0, 242, 254, 0.06)',
+            border: '1px solid rgba(0, 242, 254, 0.2)',
+            color: 'var(--text-secondary)',
+            fontSize: '0.78rem',
+          }}
+        >
+          <strong style={{ color: '#00f2fe' }}>OCR extraction</strong>
+          <div style={{ marginTop: 6 }}>
+            Text confidence: {Math.round(result.ocrMetadata.confidence || 0)}%
+            {' · '}UTR: {result.ocrMetadata.extractedUtr || 'not read'}
+            {' · '}Amount: {result.ocrMetadata.extractedAmount ?? 'not read'}
+          </div>
+          <div style={{ marginTop: 6 }}>
+            OCR and risk scoring do not confirm that funds reached the bank account. Confirm credit in the bank app or statement.
+          </div>
+        </div>
+      )}
 
       {/* Main Grid: Gauge on Left, Forensic Checklist on Right */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 24, alignItems: 'flex-start' }}>

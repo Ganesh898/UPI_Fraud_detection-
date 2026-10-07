@@ -101,6 +101,7 @@ export class FeatureExtractor {
     const utrLength = utr.length;
     const isNumericOnly = /^\d+$/.test(utr);
     const isDuplicateUtr = Boolean(input.isDuplicateUtr ?? false);
+    const isKnownSpoofDemo = Boolean(input.isKnownSpoofDemo ?? false);
 
     return {
       amount,
@@ -132,6 +133,7 @@ export class FeatureExtractor {
       utrLength,
       isNumericOnly,
       isDuplicateUtr,
+      isKnownSpoofDemo,
     };
   }
 }
@@ -144,8 +146,9 @@ export class RuleBasedScorer {
     const reasons = [];
     let rawScore = 0;
 
-    const addRuleHit = ({ code, name, category, defaultPoints, severity, description, observed, baseline }) => {
-      const points = dynamicWeights[code]?.weight ?? defaultPoints;
+    const addRuleHit = ({ code, name, category, defaultPoints, maxPoints, severity, description, observed, baseline }) => {
+      const configuredPoints = dynamicWeights[code]?.weight ?? defaultPoints;
+      const points = Math.min(maxPoints ?? Infinity, Math.max(0, configuredPoints));
       rawScore += points;
       reasons.push({
         code,
@@ -450,26 +453,41 @@ export class RuleBasedScorer {
     if (features.isDuplicateUtr) {
       addRuleHit({
         code: 'RULE_REPLAY_DUPLICATE_UTR',
-        name: 'Cross-Merchant UTR Replay Attack',
+        name: 'Previously Checked UTR',
         category: 'Banking Integrity',
-        defaultPoints: 50,
-        severity: 'CRITICAL',
-        description: 'This exact 12-digit UTR reference was already redeemed previously across the merchant store network.',
+        defaultPoints: 0,
+        maxPoints: 0,
+        severity: 'LOW',
+        description: 'This UTR was checked previously. Repeat checks alone do not prove a replay or fraud; confirm settlement in the bank account.',
         observed: 'Duplicate UTR collision',
-        baseline: 'Unique unseen reference',
+        baseline: 'Bank settlement confirmation',
       });
     }
 
     if (!features.isNumericOnly || (features.utrLength > 0 && features.utrLength !== 12)) {
       addRuleHit({
         code: 'RULE_UTR_SYNTAX_VIOLATION',
-        name: 'NPCI 12-Digit UTR Syntax Violation',
+        name: 'UTR Format Needs Verification',
         category: 'Banking Integrity',
-        defaultPoints: 40,
-        severity: 'HIGH',
-        description: `UTR "${features.utr}" deviates from 12-digit numeric Indian banking standard (Length: ${features.utrLength}).`,
+        defaultPoints: 25,
+        severity: 'MEDIUM',
+        description: `UTR "${features.utr}" does not match this prototype's 12-digit format check. UTR formats vary by bank; this alone does not confirm fraud.`,
         observed: `${features.utrLength} chars / non-standard`,
-        baseline: 'Strictly 12 numeric digits',
+        baseline: 'Bank-specific reference format; confirm against bank records',
+      });
+    }
+
+    if (features.isKnownSpoofDemo) {
+      addRuleHit({
+        code: 'RULE_KNOWN_SPOOF_DEMO',
+        name: 'Known Spoof APK Demo Scenario',
+        category: 'Demonstration Scenario',
+        defaultPoints: 80,
+        maxPoints: 80,
+        severity: 'CRITICAL',
+        description: 'This preset is explicitly marked as a known spoof demonstration. Real uploaded receipts are not given this label based on OCR or UTR format alone.',
+        observed: 'Explicit fake-receipt demo preset',
+        baseline: 'Unclassified real receipt',
       });
     }
 
@@ -487,7 +505,7 @@ export class RuleBasedScorer {
       recommendedAction = 'STEP-UP AUTHENTICATION: Prompt for biometric / UPI PIN step-up verification, enforce a 15-minute temporary cooling hold, and verify SMS alert.';
     } else {
       riskLevel = 'Low Risk';
-      recommendedAction = 'APPROVE & CLEAR: Real-time straight-through processing. Validated for immediate retail merchandise release.';
+      recommendedAction = 'LOW RISK: No configured anomaly rules were triggered. Confirm credit in the bank app or statement before releasing goods.';
       if (reasons.length === 0) {
         reasons.push({
           code: 'RULE_CLEAN_BASELINE',
@@ -549,8 +567,8 @@ export class MLModelScorer {
     logit += (features.senderIsBlacklisted ? 4.5 : 0);
     logit += Math.min(3.0, features.senderPastFraudCount * 1.5);
 
-    logit += (features.isDuplicateUtr ? 4.0 : 0);
     logit += (!features.isNumericOnly || features.utrLength !== 12 ? 2.5 : 0);
+    logit += (features.isKnownSpoofDemo ? 5.0 : 0);
 
     const probability = 1 / (1 + Math.exp(-logit));
     const mlScore = Math.min(100, Math.max(0, Math.round(probability * 100)));
@@ -609,12 +627,12 @@ export class FraudDetectionEngine {
         finalAction = 'STEP-UP AUTHENTICATION: ML model flagged moderate behavioral risk. Request 2FA step-up.';
       } else {
         finalLevel = 'Low Risk';
-        finalAction = 'APPROVE & CLEAR: ML classification confirms legitimate transaction pattern.';
+        finalAction = 'LOW RISK: The prototype model found no strong anomaly signals. Confirm credit in the bank app or statement before releasing goods.';
       }
     } else if (mode === 'HYBRID_ENSEMBLE') {
       let blended = Math.round(0.6 * ruleResult.riskScore + 0.4 * mlResult.mlScore);
       const hasCriticalHit = ruleResult.detectionReasons.some(
-        (r) => r.severity === 'CRITICAL' || r.code === 'RULE_REPLAY_DUPLICATE_UTR' || r.code === 'RULE_RECIPIENT_BLACKLISTED'
+        (r) => r.severity === 'CRITICAL' || r.code === 'RULE_RECIPIENT_BLACKLISTED'
       );
       if (hasCriticalHit && blended < 75) {
         blended = Math.max(85, blended);
@@ -683,7 +701,7 @@ export const evaluateTransactionRisk = ({
   let senderAvg = 850;
   let count5m = 1;
   let count1h = 1;
-  let isNewRecipient = true;
+  let isNewRecipient = Boolean(cleanSender);
   if (cleanSender && existingTransactions.length > 0) {
     const senderTxns = existingTransactions.filter(
       (t) => (t.sender_vpa || '').toLowerCase() === cleanSender
@@ -706,8 +724,8 @@ export const evaluateTransactionRisk = ({
       receiverVpa: cleanReceiver,
       timestamp,
       isDuplicateUtr,
-      senderIsBlacklisted,
-      receiverIsBlacklisted,
+      senderIsBlacklisted: isSenderBlacklisted,
+      receiverIsBlacklisted: isReceiverBlacklisted,
       senderHistoricalAvg: customFeatures.senderHistoricalAvg ?? senderAvg,
       txnCountLast5Min: customFeatures.txnCountLast5Min ?? count5m,
       txnCountLast1Hour: customFeatures.txnCountLast1Hour ?? count1h,
@@ -718,6 +736,7 @@ export const evaluateTransactionRisk = ({
       isLocationMismatch: customFeatures.isLocationMismatch ?? deviceInfo.location_mismatch,
       isEscalatingPattern: customFeatures.isEscalatingPattern,
       isRepeatedIdenticalAmount: customFeatures.isRepeatedIdenticalAmount,
+      isKnownSpoofDemo: customFeatures.isKnownSpoofDemo,
       scoring_mode: scoringMode,
     },
     { dynamicWeights: activeRules, mode: scoringMode }
@@ -729,16 +748,15 @@ export const evaluateTransactionRisk = ({
     if (cleanReceiver !== merchantRegisteredVpa.trim().toLowerCase()) {
       factors.push({
         code: 'VPA_MISMATCH',
-        title: 'Receiver Beneficiary VPA Discrepancy',
-        name: 'Receiver Beneficiary VPA Discrepancy',
+        title: 'Payee Does Not Match Registered Merchant',
+        name: 'Payee Does Not Match Registered Merchant',
         category: 'Counterparty Risk',
-        description: `Payment was addressed to [${receiverVpa}], which does not match your registered store VPA [${merchantRegisteredVpa}].`,
-        points: 30,
-        severity: 'HIGH',
+        description: `Payment was addressed to [${receiverVpa}], which does not match your registered store VPA [${merchantRegisteredVpa}]. This is a payee mismatch, not proof that the payment is fake; confirm the expected recipient and bank credit.`,
+        points: 0,
+        severity: 'LOW',
         observed: receiverVpa,
         baseline: merchantRegisteredVpa,
       });
-      engineOutput.riskScore = Math.min(100, engineOutput.riskScore + 30);
     }
   }
 

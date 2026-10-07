@@ -54,16 +54,16 @@ export const DashboardPage = ({ onNavigate }) => {
     )
     .reduce((acc, t) => acc + (parseFloat(t.amount) || 0), 0);
 
-  const handleQuickVerify = (e) => {
+  const handleQuickVerify = async (e) => {
     e.preventDefault();
     if (!quickUtr) return;
-    const res = verifyPayment({
+    const result = await verifyPayment({
       utr: quickUtr,
       amount: quickAmount,
       mode: 'manual',
       notes: 'Dashboard Quick POS check',
     });
-    setQuickResult(res);
+    setQuickResult(result);
   };
 
   return (

@@ -6,13 +6,13 @@ import { useTransactions } from '../context/TransactionContext';
 export const LoginPage = ({ onNavigate }) => {
   const { login, loginAsRole } = useAuth();
   const { addToast } = useTransactions();
-  const [email, setEmail] = useState('merchant@upishield.test');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('merchant@upishield.demo');
+  const [password, setPassword] = useState('Demo@2026');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!email || !password) {
@@ -21,20 +21,33 @@ export const LoginPage = ({ onNavigate }) => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      login(email, password);
-      setIsLoading(false);
-      addToast({
-        type: 'success',
-        title: 'Authentication Successful',
-        message: `Welcome back to UPI Shield Fraud Desk.`,
-      });
-      onNavigate('/dashboard');
-    }, 400);
+    const result = await login(email, password);
+    setIsLoading(false);
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+
+    addToast({
+      type: 'success',
+      title: 'Authentication Successful',
+      message: 'Welcome back to UPI Shield Fraud Desk.',
+    });
+    onNavigate('/dashboard');
   };
 
-  const handleQuickDemo = (role) => {
-    loginAsRole(role);
+  const handleQuickDemo = async (role) => {
+    setError('');
+    setIsLoading(true);
+    const result = await loginAsRole(role);
+    setIsLoading(false);
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+
     addToast({
       type: 'info',
       title: 'Demo Session Activated',
@@ -152,7 +165,7 @@ export const LoginPage = ({ onNavigate }) => {
                 className="input-field"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="merchant@upishield.test"
+                placeholder="merchant@upishield.demo"
                 style={{ paddingLeft: 38 }}
                 required
               />

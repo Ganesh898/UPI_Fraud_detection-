@@ -24,7 +24,9 @@ const fileFilter = (req, file, cb) => {
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file format. Only JPEG, PNG, and WebP receipts are permitted.'));
+    const error = new Error('Invalid file format. Only JPEG, PNG, and WebP receipts are permitted.');
+    error.statusCode = 400;
+    cb(error);
   }
 };
 

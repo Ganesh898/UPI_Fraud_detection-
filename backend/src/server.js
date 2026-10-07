@@ -22,7 +22,14 @@ const app = express();
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: [env.CLIENT_URL, 'http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    env.CLIENT_URL,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+    'http://localhost:3000',
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -47,6 +54,16 @@ if (env.NODE_ENV === 'development') {
 }
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    service: 'UPI Shield Fraud Detection Gateway',
+    message: 'Backend is running. Use /api/health to check service health.',
+    healthCheck: '/api/health',
+    apiBase: '/api',
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'online',

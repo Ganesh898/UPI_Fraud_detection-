@@ -21,12 +21,14 @@ class RuleBasedScorer {
       name,
       category,
       defaultPoints,
+      maxPoints,
       severity,
       description,
       observed,
       baseline,
     }) => {
-      const points = dynamicWeights[code]?.weight ?? defaultPoints;
+      const configuredPoints = dynamicWeights[code]?.weight ?? defaultPoints;
+      const points = Math.min(maxPoints ?? Infinity, Math.max(0, configuredPoints));
       rawScore += points;
       reasons.push({
         code,
@@ -70,9 +72,10 @@ class RuleBasedScorer {
         code: 'RULE_MICRO_TESTING_AMOUNT',
         name: 'Micro-Probing Transaction Amount',
         category: 'Amount Anomaly',
-        defaultPoints: 15,
+        defaultPoints: 5,
+        maxPoints: 5,
         severity: 'LOW',
-        description: `Nominal micro-payment of ₹${features.amount} detected. Often used by fraudsters to test active bank handles or stolen credentials.`,
+        description: `Low-value transfer of ₹${features.amount}. This alone is not evidence of fraud; review only alongside corroborating signals.`,
         observed: `₹${features.amount}`,
         baseline: '> ₹10 standard baseline',
       });
@@ -350,26 +353,41 @@ class RuleBasedScorer {
     if (features.isDuplicateUtr) {
       addRuleHit({
         code: 'RULE_REPLAY_DUPLICATE_UTR',
-        name: 'Cross-Merchant UTR Replay Attack',
+        name: 'Previously Checked UTR',
         category: 'Banking Integrity',
-        defaultPoints: 50,
-        severity: 'CRITICAL',
-        description: 'This exact 12-digit UTR reference was already redeemed previously across the merchant store network.',
+        defaultPoints: 0,
+        maxPoints: 0,
+        severity: 'LOW',
+        description: 'This UTR was checked previously. Repeat checks alone do not prove a replay or fraud; confirm settlement in the bank account.',
         observed: 'Duplicate UTR collision',
-        baseline: 'Unique unseen reference',
+        baseline: 'Bank settlement confirmation',
       });
     }
 
     if (!features.isNumericOnly || (features.utrLength > 0 && features.utrLength !== 12)) {
       addRuleHit({
         code: 'RULE_UTR_SYNTAX_VIOLATION',
-        name: 'NPCI 12-Digit UTR Syntax Violation',
+        name: 'UTR Format Needs Verification',
         category: 'Banking Integrity',
-        defaultPoints: 40,
-        severity: 'HIGH',
-        description: `UTR "${features.utr}" deviates from 12-digit numeric Indian banking standard (Length: ${features.utrLength}).`,
+        defaultPoints: 25,
+        severity: 'MEDIUM',
+        description: `UTR "${features.utr}" does not match this prototype's 12-digit format check. UTR formats vary by bank; this alone does not confirm fraud.`,
         observed: `${features.utrLength} chars / non-standard`,
-        baseline: 'Strictly 12 numeric digits',
+        baseline: 'Bank-specific reference format; confirm against bank records',
+      });
+    }
+
+    if (features.isKnownSpoofDemo) {
+      addRuleHit({
+        code: 'RULE_KNOWN_SPOOF_DEMO',
+        name: 'Known Spoof APK Demo Scenario',
+        category: 'Demonstration Scenario',
+        defaultPoints: 80,
+        maxPoints: 80,
+        severity: 'CRITICAL',
+        description: 'This preset is explicitly marked as a known spoof demonstration. Real uploaded receipts are not given this label based on OCR or UTR format alone.',
+        observed: 'Explicit fake-receipt demo preset',
+        baseline: 'Unclassified real receipt',
       });
     }
 
@@ -390,7 +408,7 @@ class RuleBasedScorer {
       recommendedAction = 'STEP-UP AUTHENTICATION: Prompt for biometric / UPI PIN step-up verification, enforce a 15-minute temporary cooling hold, and verify SMS alert.';
     } else {
       riskLevel = 'Low Risk';
-      recommendedAction = 'APPROVE & CLEAR: Real-time straight-through processing. Validated for immediate retail merchandise release.';
+      recommendedAction = 'LOW RISK: No configured anomaly rules were triggered. Confirm credit in the bank app or statement before releasing goods.';
       if (reasons.length === 0) {
         reasons.push({
           code: 'RULE_CLEAN_BASELINE',

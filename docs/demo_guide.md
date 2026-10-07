@@ -52,8 +52,9 @@ This guide provides a structured 3-minute presentation flow for showcasing **UPI
 1. **Transaction Ledger**:
    - Show how the merchant can review their full history, filter by risk level, and mark transactions as *Disputed* or *Quarantined*.
 2. **Admin Command Center**:
-   - Log in as `admin@upishield.test`.
+   - Log in as `admin@upishield.demo` with password `Admin@2026`.
    - Show the **Fraud Rule Weight Configurator**: Demonstrate how bank compliance officers can dynamically increase the penalty weight for duplicate UTRs or adjust velocity thresholds in real time without restarting the backend.
    - Show **VPA Blacklist Management**: Add a persistent fraudulent UPI ID to the system-wide blacklist.
+   - Merchant demo login: `merchant@upishield.demo` / `Demo@2026`.
 3. **Closing Statement**:
    - "UPI Shield turns vulnerable retail counters into intelligent, fraud-resilient checkout terminals with zero hardware cost."

@@ -83,8 +83,8 @@ npm run dev      # Starts client on http://localhost:5173
 ### 3. Demo Credentials
 | Role | Email | Password | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Merchant** | `merchant@upishield.test` | `Password123!` | Test POS verification, upload screenshots, inspect risk scores |
-| **Admin** | `admin@upishield.test` | `Password123!` | Configure fraud rule weights, review flagged queue, view system analytics |
+| **Merchant** | `merchant@upishield.demo` | `Demo@2026` | Test POS verification, upload screenshots, inspect risk scores |
+| **Admin** | `admin@upishield.demo` | `Admin@2026` | Configure fraud rule weights, review flagged queue, view system analytics |
 
 ---
 
